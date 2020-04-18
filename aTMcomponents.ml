@@ -1,6 +1,9 @@
-open Scanf
+open Printf ;;
+open Scanf ;;
 
-type id = int
+module DB = Database ;;
+
+type id = int ;;
 
 type action =
   | Balance           (* balance inquiry *)
@@ -12,53 +15,67 @@ type action =
 
 type account_spec = {name : string; id : id; balance : int} ;;
 
-module ACC_SET = Set.Make(struct 
-							type t = account_spec
-							let compare = Stdlib.compare
-						  end)
-
-class type persons = 
-	object
-		val mutable id
-		val mutable balance
-		val mutable name
-
-		method get_balance : id -> int
-		method get_name : id -> string
-		method update_balance : id -> int -> unit
-	end
-
 
 
 
 
 let initialize (lst : account_spec list) : unit = 
-   let emp = ACC_SET.empty in 
-   List.fold_left (fun acc x -> ACC_SET.add x acc) emp lst
+   lst
+   |> List.iter (fun {name; id; balance} ->
+   										DB.create id name; DB.update id balance) ;;
 
 
 
-let acquire_id : unit -> id = 
-	let iden = read_int () in
-	ACC_SET.mem iden 
+let rec acquire_id () : id = 
+	printf "Enter id number: ";
+	try
+		let id = read_int () in
+		ignore (DB.exists id); id
+	with
+	| Not_found
+	| Failure _ -> printf "invalid id \n";
+				   acquire_id () ;;
 
-let acquire_amount : unit -> int = 
+let rec acquire_amount () : int = 
+	printf "Enter amount: ";
+	try
+		let amnt = read_int () in
+		if amnt <= 0 then raise (Failure "amount is non-positive");
+		amnt
+	with
+	| Failure _ -> printf "invalid amount requested \n";
+				   acquire_amount () ;;
+
+let rec acquire_act () : action =
+	printf "Enter action: (B) Balance (-) Withdraw (+) Deposit \
+						  (=) Done (X) Exit: %!";
+	scanf " %c"
+	   (fun char -> match char with 
+					| 'b' | 'B' -> Balance
+					| '/' | 'x' | 'X' -> Finished
+					| '=' -> Next
+					| 'w' | 'W' | '-' -> Withdraw (acquire_amount ())
+					| 'd' | 'D' | '+' -> Deposit (acquire_amount ())
+					| _ -> printf "invalid choice, try again \n";
+						acquire_act () );;
+
+let get_balance : id -> int = DB.balance ;;
 
 
-let acquire_act : unit -> action =
+let get_name : id -> string = DB.name ;;
 
 
-let get_balance (iden : id) : int =
-
-
-let get_name (iden : id) : string = 
-
-
-let update_balance (iden : id) (amnt : int) : unit =
+let update_balance : id -> int -> unit = DB.update ;;
 
 
 let present_message (str : string) : unit = 
+	printf "%s\n%!" str ;;
 
 
 let deliver_cash (amnt : int) : unit =
+	printf "Here's your cash: ";
+	for _i = 1 to (amnt / 20) do
+		printf "[20 @ 20]"
+	done;
 
+	printf " and %d more \n" (amnt mod 20) ;;
